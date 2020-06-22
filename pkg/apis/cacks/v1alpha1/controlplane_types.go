@@ -2,6 +2,7 @@ package v1alpha1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	corev1 "k8s.io/api/core/v1"
 )
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
@@ -9,9 +10,21 @@ import (
 
 // ControlPlaneSpec defines the desired state of ControlPlane
 type ControlPlaneSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
-	// Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
+	ControlPlaneMaster `json:"master,omitempty"`
+}
+
+type ControlPlaneMaster struct {
+	Count int `json:"count,omitempty"`
+	ControlPlaneMasterSettings `json:"settings,omitempty"`
+	corev1.ResourceRequirements `json:"resources,omitempty"`
+}
+
+type ControlPlaneMasterSettings struct {
+	MasterSecretName string `json:"certsSecret,omitempty"`
+	AdmissionPlugins []string `json:"admissionPlugins,omitempty"`
+	ServiceClusterIPRange string `json:"serviceClusterIpRange,omitempty"`
+	ClusterCIDR string `json:"clusterCidr,omitempty"`
+	EncryptionSecretName string `json:"encryptionSecret,omitempty"`
 }
 
 // ControlPlaneStatus defines the observed state of ControlPlane
