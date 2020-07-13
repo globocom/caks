@@ -7,6 +7,10 @@ import (
 	"strings"
 )
 
+func ConvertIntegerToStringMebiBytes(value int)string{
+	return fmt.Sprintf("%dMi",value)
+}
+
 func convertMemoryValueToInteger(value string, unit string)(int, error){
 	valueArray := strings.Split(value,unit)
 	if len(valueArray) > 0{
