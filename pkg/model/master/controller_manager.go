@@ -13,6 +13,18 @@ type ControllerManager struct {
 	resourceRequirements corev1.ResourceRequirements
 }
 
+func NewControllerManager(clusterName, serviceClusterIPRange, clusterCIDRS string,
+	resourceRequirements corev1.ResourceRequirements)ControllerManager{
+	return ControllerManager{
+		applicationName: "kube-controller-manager",
+		image: "rodrigoribeiro/globo-kube-controller-manager",
+		clusterCIDRS: clusterCIDRS,
+		clusterName: clusterName,
+		serviceClusterIPRange: serviceClusterIPRange,
+		resourceRequirements: resourceRequirements,
+	}
+}
+
 func (controllerManager *ControllerManager) BuilderContainer()corev1.Container{
 	return corev1.Container{
 		Name:         controllerManager.applicationName,
