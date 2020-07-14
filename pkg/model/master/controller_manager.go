@@ -13,6 +13,16 @@ type ControllerManager struct {
 	resourceRequirements corev1.ResourceRequirements
 }
 
+func (controllerManager *ControllerManager) BuilderContainer()corev1.Container{
+	return corev1.Container{
+		Name:         controllerManager.applicationName,
+		Image:        controllerManager.image,
+		Command:      controllerManager.buildCommands(),
+		VolumeMounts: controllerManager.buildVolumeMounts(),
+		Resources: controllerManager.resourceRequirements,
+	}
+}
+
 func (*ControllerManager) buildVolumeMounts()[]corev1.VolumeMount{
 	return []corev1.VolumeMount{
 		{Name: "kubernetes", MountPath: "/var/lib/kubernetes", ReadOnly: true},
