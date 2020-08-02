@@ -14,6 +14,16 @@ type apiServer struct {
 	resourceRequirements corev1.ResourceRequirements
 }
 
+func (apiServer *apiServer) BuildContainer()corev1.Container{
+	return corev1.Container{
+		Name: apiServer.applicationName,
+		Image: apiServer.image,
+		VolumeMounts: apiServer.buildVolumeMounts(),
+		Command: apiServer.buildCommands(),
+		Resources: apiServer.resourceRequirements,
+	}
+}
+
 func (apiServer *apiServer) buildVolumeMounts()[]corev1.VolumeMount{
 	return []corev1.VolumeMount{
 		{Name: "ca", MountPath: "/var/lib/kubernetes/ca", ReadOnly: true},
