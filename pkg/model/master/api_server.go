@@ -14,6 +14,14 @@ type apiServer struct {
 	resourceRequirements corev1.ResourceRequirements
 }
 
+func (apiServer *apiServer) buildVolumeMounts()[]corev1.VolumeMount{
+	return []corev1.VolumeMount{
+		{Name: "ca", MountPath: "/var/lib/kubernetes/ca", ReadOnly: true},
+		{Name: "kubernetes", MountPath: "/var/lib/kubernetes", ReadOnly: true},
+		{Name: "encryption", MountPath: "/var/lib/kubernetes/encryption", ReadOnly: true},
+	}
+}
+
 func (apiServer *apiServer) buildCommands()[]string{
 
 	printAdmissionPlugins := func ()string{
