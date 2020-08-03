@@ -12,6 +12,69 @@ func NewResourceSplitter() ResourcesManager {
 	return ResourcesManager{}
 }
 
+func (*ResourcesManager) join(resourcesRequirements ...corev1.ResourceRequirements)(*corev1.ResourceRequirements,error){
+
+	sumCPURequest := 0
+	sumCPULimit := 0
+	sumMemoryRequest := 0
+	sumMemoryLimit := 0
+
+	for _, resource := range resourcesRequirements {
+		memoryRequest, err := resources.ConvertToMebiBytes(resource.Requests.Memory().String())
+
+		if err != nil {
+			return nil, err
+		}
+
+		sumMemoryRequest += memoryRequest
+
+		memoryLimit, err :=  resources.ConvertToMebiBytes(resource.Limits.Memory().String())
+
+		if err != nil {
+			return nil, err
+		}
+
+		sumMemoryLimit += memoryLimit
+
+		cpuRequest, err := resources.ConvertToIntegerMiliCores(resource.Requests.Cpu().String())
+
+		if err != nil {
+			return nil, err
+		}
+
+		sumCPURequest += cpuRequest
+
+		cpuLimit, err := resources.ConvertToIntegerMiliCores(resource.Limits.Cpu().String())
+
+		if err != nil {
+			return nil, err
+		}
+
+		sumCPULimit += cpuLimit
+	}
+
+	joinResource := &corev1.ResourceRequirements{
+		Requests: corev1.ResourceList{
+			"cpu": kuberesources.MustParse(
+				resources.ConvertIntegerToStringMilicores(sumCPURequest),
+			),
+			"memory": kuberesources.MustParse(
+				resources.ConvertIntegerToStringMebiBytes(sumMemoryRequest),
+			),
+		},
+		Limits: corev1.ResourceList{
+			"cpu": kuberesources.MustParse(
+				resources.ConvertIntegerToStringMilicores(sumCPULimit),
+			),
+			"memory": kuberesources.MustParse(
+				resources.ConvertIntegerToStringMebiBytes(sumMemoryLimit),
+			),
+		},
+	}
+
+	return joinResource, nil
+}
+
 func (*ResourcesManager) split(controlPlaneResources corev1.ResourceRequirements,
 	divisorStrategy func(res int)int)(*corev1.ResourceRequirements, error){
 
