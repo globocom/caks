@@ -14,6 +14,20 @@ type apiServer struct {
 	resourceRequirements corev1.ResourceRequirements
 }
 
+func newAPIServer(advertiseAddress, serviceClusterIpRange string,
+	admissionPlugins []string, resourceRequirements corev1.ResourceRequirements)apiServer{
+	apiServer := apiServer{
+		image: "rodrigoribeiro/globo-kube-apiserver",
+		applicationName: "kube-apiserver",
+		advertiseAddress: advertiseAddress,
+		serviceClusterIPRange: serviceClusterIpRange,
+		admissionPlugins: admissionPlugins,
+		resourceRequirements: resourceRequirements,
+	}
+
+	return apiServer
+}
+
 func (apiServer *apiServer) BuildContainer()corev1.Container{
 	return corev1.Container{
 		Name: apiServer.applicationName,
