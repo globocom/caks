@@ -34,3 +34,11 @@ func (master *Master) buildPod()corev1.PodTemplateSpec{
 		},
 	}
 }
+
+func (master *Master) buildPodLabels()map[string]string{
+	return map[string]string{
+		"app":"master",
+		"cluster": master.namespacedName.Name,
+		"tier": "control-plane",
+	}
+}
