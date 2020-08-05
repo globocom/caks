@@ -35,6 +35,15 @@ func (master *Master) buildPod()corev1.PodTemplateSpec{
 	}
 }
 
+func (master *Master) buildVolumes()[]corev1.Volume{
+
+	return []corev1.Volume{
+		master.buildSecretVolume("ca", "ca-certs"),
+		master.buildSecretVolume("kubernetes", master.settings.MasterSecretName),
+		master.buildSecretVolume("encryption", master.settings.EncryptionSecretName),
+	}
+}
+
 func (master *Master) buildPodLabels()map[string]string{
 	return map[string]string{
 		"app":"master",
