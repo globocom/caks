@@ -44,6 +44,17 @@ func (master *Master) buildVolumes()[]corev1.Volume{
 	}
 }
 
+func (*Master) buildSecretVolume(volumeName, secretName string)corev1.Volume{
+	return corev1.Volume{
+		Name: volumeName,
+		VolumeSource: corev1.VolumeSource{
+			Secret: &corev1.SecretVolumeSource{
+				SecretName: secretName,
+			},
+		},
+	}
+}
+
 func (master *Master) buildPodLabels()map[string]string{
 	return map[string]string{
 		"app":"master",
