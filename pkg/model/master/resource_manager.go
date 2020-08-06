@@ -2,6 +2,7 @@ package master
 
 import (
 	"github.com/globocom/caks/pkg/model/resources"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	kuberesources "k8s.io/apimachinery/pkg/api/resource"
 )
@@ -10,6 +11,16 @@ type ResourcesManager struct {}
 
 func NewResourceSplitter() ResourcesManager {
 	return ResourcesManager{}
+}
+
+func (r *ResourcesManager) sumDeploymentResources(deployment appsv1.Deployment)(*corev1.ResourceRequirements, error){
+	var requirements  []corev1.ResourceRequirements
+
+	for _, container := range deployment.Spec.Template.Spec.Containers {
+		requirements = append(requirements,container.Resources)
+	}
+
+	return r.join(requirements...)
 }
 
 func (*ResourcesManager) join(resourcesRequirements ...corev1.ResourceRequirements)(*corev1.ResourceRequirements,error){
