@@ -7,6 +7,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"reflect"
 	"strings"
 )
 
@@ -58,6 +59,39 @@ func NewMaster(namespacedName types.NamespacedName, settings v1alpha1.ControlPla
 			namespacedName.Name, settings.ServiceClusterIPRange,settings.ClusterCIDR, *otherComponentsResources,
 		),
 	}, nil
+}
+
+func (master *Master) EqualDeployment(deployment *appsv1.Deployment)(bool,error){
+	currentDeployment := master.BuildDeployment()
+
+	if *deployment.Spec.Replicas != *currentDeployment.Spec.Replicas {
+		return false, nil
+	}
+
+	currentRequirements, err := master.resourceManager.sumDeploymentResources(*currentDeployment)
+
+	if err != nil {
+		return false, err
+	}
+
+	deploymentRequirements, err := master.resourceManager.sumDeploymentResources(*deployment)
+
+	if err != nil {
+		return false, err
+	}
+
+	if !reflect.DeepEqual(currentRequirements, deploymentRequirements) {
+		return false, nil
+	}
+
+	for _, container := range deployment.Spec.Template.Spec.Containers {
+		currentContainer := master.findContainer(container.Name)
+		if currentContainer == nil || !reflect.DeepEqual(currentContainer.Command, container.Command){
+			return false, nil
+		}
+	}
+
+	return true, nil
 }
 
 func (master *Master) BuildDeployment()*appsv1.Deployment{
