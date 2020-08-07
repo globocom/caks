@@ -7,6 +7,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"strings"
 )
 
 
@@ -17,6 +18,46 @@ type Master struct{
 	scheduler Scheduler
 	controllerManager ControllerManager
 	resourceManager ResourcesManager
+}
+
+func NewMaster(namespacedName types.NamespacedName, settings v1alpha1.ControlPlaneMaster, loadBalancerHostnames []string,
+	resourcesManager ResourcesManager)(*Master,error) {
+
+	advertiseAddress := strings.Join(loadBalancerHostnames, ",")
+
+	otherComponentsDivisorResourcesStrategy := func(res int)int{
+		return res/3
+	}
+	otherComponentsResources,err := resourcesManager.split(settings.ResourceRequirements,otherComponentsDivisorResourcesStrategy)
+
+	if err != nil {
+		return nil, err
+	}
+
+	apiServerDivisorResourcesStrategy := func(res int)int{
+		return otherComponentsDivisorResourcesStrategy(res) + res%3
+	}
+	apiServerResources,err := resourcesManager.split(settings.ResourceRequirements,apiServerDivisorResourcesStrategy)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &Master{
+		settings: settings,
+		namespacedName: namespacedName,
+		resourceManager: resourcesManager,
+		apiServer: newAPIServer(
+			advertiseAddress,
+			settings.ServiceClusterIPRange,
+			settings.AdmissionPlugins,
+			*apiServerResources,
+		),
+		scheduler: NewScheduler(*otherComponentsResources),
+		controllerManager: NewControllerManager(
+			namespacedName.Name, settings.ServiceClusterIPRange,settings.ClusterCIDR, *otherComponentsResources,
+		),
+	}, nil
 }
 
 func (master *Master) BuildDeployment()*appsv1.Deployment{
