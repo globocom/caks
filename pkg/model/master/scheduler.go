@@ -7,3 +7,11 @@ type Scheduler struct {
 	image string
 	resourceRequirements corev1.ResourceRequirements
 }
+
+func NewScheduler(resourceRequirements corev1.ResourceRequirements)Scheduler{
+	return Scheduler{
+		applicationName: "kube-scheduler",
+		image: "rodrigoribeiro/globo-kube-scheduler",
+		resourceRequirements: resourceRequirements,
+	}
+}
