@@ -15,3 +15,12 @@ func NewScheduler(resourceRequirements corev1.ResourceRequirements)Scheduler{
 		resourceRequirements: resourceRequirements,
 	}
 }
+
+func (scheduler *Scheduler) buildCommands()[]string{
+	return []string{
+		scheduler.applicationName,
+		printFlag("leader-elect", true),
+		printFlag("kubeconfig","/var/lib/kubernetes/kube-scheduler.kubeconfig"),
+		printFlag("v", 2),
+	}
+}
