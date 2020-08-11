@@ -16,6 +16,16 @@ func NewScheduler(resourceRequirements corev1.ResourceRequirements)Scheduler{
 	}
 }
 
+func (scheduler *Scheduler) BuilderContainer()corev1.Container{
+	return corev1.Container{
+		Name: scheduler.applicationName,
+		Image: scheduler.image,
+		Command: scheduler.buildCommands(),
+		VolumeMounts: scheduler.buildVolumeMounts(),
+		Resources: scheduler.resourceRequirements,
+	}
+}
+
 func (*Scheduler) buildVolumeMounts()[]corev1.VolumeMount{
 	return []corev1.VolumeMount{
 		{Name: "kubernetes", MountPath: "/var/lib/kubernetes", ReadOnly: true},
