@@ -1,7 +1,0 @@
-apiVersion: cacks.globo.com/v1alpha1
-kind: ControlPlane
-metadata:
-  name: example-controlplane
-spec:
-  # Add fields here
-  size: 3

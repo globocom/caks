@@ -1,7 +1,7 @@
 package apis
 
 import (
-	"github.com/globocom/caks/pkg/apis/cacks/v1alpha1"
+	"github.com/globocom/caks/pkg/apis/caks/v1alpha1"
 )
 
 func init() {
