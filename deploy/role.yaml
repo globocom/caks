@@ -67,7 +67,7 @@ rules:
   verbs:
   - get
 - apiGroups:
-  - cacks.globo.com
+  - caks.globo.com
   resources:
   - '*'
   verbs:
