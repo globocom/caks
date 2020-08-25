@@ -2,6 +2,9 @@ package controlplane
 
 import (
 	"context"
+	appsv1 "k8s.io/api/apps/v1"
+	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	caksv1alpha1 "github.com/globocom/caks/pkg/apis/caks/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
@@ -52,8 +55,21 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	}
 
 	// TODO(user): Modify this to be the types you create that are owned by the primary resource
-	// Watch for changes to secondary resource Pods and requeue the owner ControlPlane
-	err = c.Watch(&source.Kind{Type: &corev1.Pod{}}, &handler.EnqueueRequestForOwner{
+	// Watch for changes to secondary resource Deployment and requeue the owner ControlPlane
+	err = c.Watch(&source.Kind{Type: &appsv1.Deployment{}}, &handler.EnqueueRequestForObject{
+
+	}, predicate.GenerationChangedPredicate{Funcs: predicate.Funcs{DeleteFunc: func(e event.DeleteEvent) bool{
+		if _, ok := e.Meta.GetLabels()["tier"]; ok {
+			return true
+		}
+		return false
+	}}})
+	if err != nil {
+		return err
+	}
+
+	// Watch for changes to secondary resource Service and requeue the owner ControlPlane
+	err = c.Watch(&source.Kind{Type: &corev1.Service{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &caksv1alpha1.ControlPlane{},
 	})
