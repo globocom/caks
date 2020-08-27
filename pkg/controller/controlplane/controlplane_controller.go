@@ -1,7 +1,13 @@
 package controlplane
 
 import (
+	"context"
 	appsv1 "k8s.io/api/apps/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
@@ -79,6 +85,43 @@ type ReconcileControlPlane struct {
 func (r *ReconcileControlPlane) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 
 	return reconcile.Result{}, nil
+}
+
+
+
+func (r *ReconcileControlPlane) createLoadBalancer(instance *caksv1alpha1.ControlPlane,
+	namespacedName types.NamespacedName)(*corev1.Service, error){
+
+	serviceLoadBalancer := &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: namespacedName.Name,
+			Namespace: namespacedName.Namespace,
+			Labels: map[string]string{
+				"app":"load-balancer",
+				"cluster": namespacedName.Name,
+				"tier": "control-plane",
+			},
+		},
+		Spec: corev1.ServiceSpec{
+			Type: corev1.ServiceType("LoadBalancer"),
+			Ports: []corev1.ServicePort{
+				{ Port: 6443, TargetPort: intstr.FromInt(6443)},
+			},
+			Selector: map[string]string{
+				"cluster": namespacedName.Name,
+			},
+		},
+	}
+
+	if err := controllerutil.SetControllerReference(instance, serviceLoadBalancer, r.scheme); err != nil {
+		return nil, err
+	}
+
+	if err := r.client.Create(context.TODO(), serviceLoadBalancer); err != nil {
+		return nil, err
+	}
+
+	return serviceLoadBalancer, nil
 }
 
 
