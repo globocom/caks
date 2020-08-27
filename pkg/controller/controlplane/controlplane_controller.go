@@ -87,7 +87,26 @@ func (r *ReconcileControlPlane) Reconcile(request reconcile.Request) (reconcile.
 	return reconcile.Result{}, nil
 }
 
+func (r *ReconcileControlPlane) ensureLatestLoadBalancer(instance *caksv1alpha1.ControlPlane,
+	clusterNamespacedName types.NamespacedName)(*corev1.Service, error){
 
+	serviceLoadBalancer := &corev1.Service{}
+
+	err := r.client.Get(context.TODO(), clusterNamespacedName, serviceLoadBalancer)
+
+	if err != nil {
+		if errors.IsNotFound(err){
+			serviceLoadBalancer, err = r.createLoadBalancer(instance,clusterNamespacedName)
+			if err != nil {
+				return nil, err
+			}
+			return serviceLoadBalancer, nil
+		}
+		return nil, err
+	}
+
+	return serviceLoadBalancer, nil
+}
 
 func (r *ReconcileControlPlane) createLoadBalancer(instance *caksv1alpha1.ControlPlane,
 	namespacedName types.NamespacedName)(*corev1.Service, error){
