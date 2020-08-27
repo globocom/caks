@@ -8,6 +8,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/kubernetes/pkg/util/slice"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
@@ -164,6 +165,42 @@ func (r *ReconcileControlPlane) createLoadBalancer(instance *caksv1alpha1.Contro
 	}
 
 	return serviceLoadBalancer, nil
+}
+
+func (r *ReconcileControlPlane) ensureFinalizer(instance *caksv1alpha1.ControlPlane,
+	clusterNamespacedName types.NamespacedName)(bool,error){
+
+	controlPlaneFinalizerName := "controlplane.finalizers.gks.globo.com"
+
+	if instance.GetDeletionTimestamp().IsZero() {
+		if !slice.ContainsString(instance.GetFinalizers(), controlPlaneFinalizerName, nil){
+			instance.SetFinalizers(append(instance.GetFinalizers(),controlPlaneFinalizerName))
+			if err := r.client.Update(context.TODO(), instance); err != nil {
+				return false, err
+			}
+		}
+	}else{
+		if slice.ContainsString(instance.GetFinalizers(), controlPlaneFinalizerName, nil){
+			masterDeployment := &appsv1.Deployment{}
+			if err := r.client.Get(context.TODO(), clusterNamespacedName, masterDeployment); err == nil {
+				if err := r.client.Delete(context.TODO(), masterDeployment); err != nil {
+					return true, err
+				}
+			}else{
+				if !errors.IsNotFound(err){
+					return true, err
+				}
+			}
+
+			instance.SetFinalizers(slice.RemoveString(instance.GetFinalizers(),controlPlaneFinalizerName, nil))
+			if err := r.client.Update(context.TODO(), instance); err != nil {
+				return true, err
+			}
+		}
+		return true, nil
+	}
+
+	return false, nil
 }
 
 
