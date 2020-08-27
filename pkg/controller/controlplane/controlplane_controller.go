@@ -89,6 +89,20 @@ func (r *ReconcileControlPlane) Reconcile(request reconcile.Request) (reconcile.
 	return reconcile.Result{}, nil
 }
 
+func (r *ReconcileControlPlane) extractLoadBalancerHostNames(loadBalancer *corev1.Service)[]string{
+	ips := make([]string, len(loadBalancer.Status.LoadBalancer.Ingress))
+
+	for index,ingress := range loadBalancer.Status.LoadBalancer.Ingress{
+		ips[index] = ingress.IP
+	}
+
+	/*if len(ips) == 0 {
+		ips = []string{loadBalancer.Spec.ClusterIP}
+	} */
+
+	return ips
+}
+
 func (r *ReconcileControlPlane) ensureLatestDeployment(instance *caksv1alpha1.ControlPlane,
 	loadBalancerHostnames []string, clusterNamespacedName types.NamespacedName)error {
 
