@@ -89,6 +89,42 @@ func (r *ReconcileControlPlane) Reconcile(request reconcile.Request) (reconcile.
 	return reconcile.Result{}, nil
 }
 
+func (r *ReconcileControlPlane) ensureLatestDeployment(instance *caksv1alpha1.ControlPlane,
+	loadBalancerHostnames []string, clusterNamespacedName types.NamespacedName)error {
+
+	masterDeployment := &appsv1.Deployment{}
+
+	err := r.client.Get(context.TODO(), clusterNamespacedName, masterDeployment)
+
+	if err != nil {
+		if errors.IsNotFound(err){
+			return r.createMaster(clusterNamespacedName, instance, loadBalancerHostnames)
+		}
+		return err
+	}
+
+	desiredMasterModel, err := master.NewMaster(clusterNamespacedName, instance.Spec.ControlPlaneMaster,
+		loadBalancerHostnames, master.NewResourceSplitter())
+
+	if err != nil {
+		return err
+	}
+
+	equal, err := desiredMasterModel.EqualDeployment(masterDeployment)
+
+	if err != nil {
+		return err
+	}
+
+	if !equal{
+		if err = r.client.Update(context.TODO(), desiredMasterModel.BuildDeployment()); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (r *ReconcileControlPlane) ensureLatestLoadBalancer(instance *caksv1alpha1.ControlPlane,
 	clusterNamespacedName types.NamespacedName)(*corev1.Service, error){
 
@@ -104,63 +140,6 @@ func (r *ReconcileControlPlane) ensureLatestLoadBalancer(instance *caksv1alpha1.
 			}
 			return serviceLoadBalancer, nil
 		}
-		return nil, err
-	}
-
-	return serviceLoadBalancer, nil
-}
-
-func (r *ReconcileControlPlane) createMaster(namspacedName types.NamespacedName, instance *caksv1alpha1.ControlPlane,
-	loadBalancerHostnames []string)error{
-	masterModel, err := master.NewMaster(namspacedName, instance.Spec.ControlPlaneMaster, loadBalancerHostnames,
-		master.NewResourceSplitter())
-
-	if err != nil {
-		return err
-	}
-
-	masterDeployment := masterModel.BuildDeployment()
-
-	if err := controllerutil.SetControllerReference(instance, masterDeployment, r.scheme); err != nil {
-		return err
-	}
-
-	if err := r.client.Create(context.TODO(), masterDeployment); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (r *ReconcileControlPlane) createLoadBalancer(instance *caksv1alpha1.ControlPlane,
-	namespacedName types.NamespacedName)(*corev1.Service, error){
-
-	serviceLoadBalancer := &corev1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: namespacedName.Name,
-			Namespace: namespacedName.Namespace,
-			Labels: map[string]string{
-				"app":"load-balancer",
-				"cluster": namespacedName.Name,
-				"tier": "control-plane",
-			},
-		},
-		Spec: corev1.ServiceSpec{
-			Type: corev1.ServiceType("LoadBalancer"),
-			Ports: []corev1.ServicePort{
-				{ Port: 6443, TargetPort: intstr.FromInt(6443)},
-			},
-			Selector: map[string]string{
-				"cluster": namespacedName.Name,
-			},
-		},
-	}
-
-	if err := controllerutil.SetControllerReference(instance, serviceLoadBalancer, r.scheme); err != nil {
-		return nil, err
-	}
-
-	if err := r.client.Create(context.TODO(), serviceLoadBalancer); err != nil {
 		return nil, err
 	}
 
@@ -202,5 +181,63 @@ func (r *ReconcileControlPlane) ensureFinalizer(instance *caksv1alpha1.ControlPl
 
 	return false, nil
 }
+
+func (r *ReconcileControlPlane) createLoadBalancer(instance *caksv1alpha1.ControlPlane,
+	namespacedName types.NamespacedName)(*corev1.Service, error){
+
+	serviceLoadBalancer := &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: namespacedName.Name,
+			Namespace: namespacedName.Namespace,
+			Labels: map[string]string{
+				"app":"load-balancer",
+				"cluster": namespacedName.Name,
+				"tier": "control-plane",
+			},
+		},
+		Spec: corev1.ServiceSpec{
+			Type: corev1.ServiceType("LoadBalancer"),
+			Ports: []corev1.ServicePort{
+				{ Port: 6443, TargetPort: intstr.FromInt(6443)},
+			},
+			Selector: map[string]string{
+				"cluster": namespacedName.Name,
+			},
+		},
+	}
+
+	if err := controllerutil.SetControllerReference(instance, serviceLoadBalancer, r.scheme); err != nil {
+		return nil, err
+	}
+
+	if err := r.client.Create(context.TODO(), serviceLoadBalancer); err != nil {
+		return nil, err
+	}
+
+	return serviceLoadBalancer, nil
+}
+
+func (r *ReconcileControlPlane) createMaster(namspacedName types.NamespacedName, instance *caksv1alpha1.ControlPlane,
+	loadBalancerHostnames []string)error{
+	masterModel, err := master.NewMaster(namspacedName, instance.Spec.ControlPlaneMaster, loadBalancerHostnames,
+		master.NewResourceSplitter())
+
+	if err != nil {
+		return err
+	}
+
+	masterDeployment := masterModel.BuildDeployment()
+
+	if err := controllerutil.SetControllerReference(instance, masterDeployment, r.scheme); err != nil {
+		return err
+	}
+
+	if err := r.client.Create(context.TODO(), masterDeployment); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 
 
