@@ -2,6 +2,7 @@ package controlplane
 
 import (
 	"context"
+	"github.com/globocom/caks/pkg/model/master"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -106,6 +107,28 @@ func (r *ReconcileControlPlane) ensureLatestLoadBalancer(instance *caksv1alpha1.
 	}
 
 	return serviceLoadBalancer, nil
+}
+
+func (r *ReconcileControlPlane) createMaster(namspacedName types.NamespacedName, instance *caksv1alpha1.ControlPlane,
+	loadBalancerHostnames []string)error{
+	masterModel, err := master.NewMaster(namspacedName, instance.Spec.ControlPlaneMaster, loadBalancerHostnames,
+		master.NewResourceSplitter())
+
+	if err != nil {
+		return err
+	}
+
+	masterDeployment := masterModel.BuildDeployment()
+
+	if err := controllerutil.SetControllerReference(instance, masterDeployment, r.scheme); err != nil {
+		return err
+	}
+
+	if err := r.client.Create(context.TODO(), masterDeployment); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (r *ReconcileControlPlane) createLoadBalancer(instance *caksv1alpha1.ControlPlane,
