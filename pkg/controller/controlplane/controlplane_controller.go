@@ -86,6 +86,43 @@ type ReconcileControlPlane struct {
 
 func (r *ReconcileControlPlane) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 
+	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
+	reqLogger.Info("Reconciling ControlPlane")
+
+	instance := &caksv1alpha1.ControlPlane{}
+	err := r.client.Get(context.TODO(), request.NamespacedName, instance)
+
+	if err != nil {
+		if errors.IsNotFound(err){
+			return reconcile.Result{}, nil
+		}
+		return reconcile.Result{}, err
+	}
+
+	clusterNamespacedName := types.NamespacedName{Name: instance.Name, Namespace: instance.Namespace}
+
+	if finalized, err := r.ensureFinalizer(instance, clusterNamespacedName); finalized || err != nil {
+		return reconcile.Result{}, err
+	}
+
+	serviceLoadBalancer, err := r.ensureLatestLoadBalancer(instance, clusterNamespacedName)
+
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+
+	loadBalancerHostNames := r.extractLoadBalancerHostNames(serviceLoadBalancer)
+
+	if len(loadBalancerHostNames) == 0 {
+		return reconcile.Result{Requeue: true}, nil
+	}
+
+	err = r.ensureLatestDeployment(instance, loadBalancerHostNames, clusterNamespacedName)
+
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+
 	return reconcile.Result{}, nil
 }
 
