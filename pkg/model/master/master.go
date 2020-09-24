@@ -1,52 +1,52 @@
 package master
 
 import (
-	"github.com/globocom/caks/pkg/apis/cacks/v1alpha1"
-	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/types"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"reflect"
 	"strings"
+
+	"github.com/globocom/caks/pkg/apis/caks/v1alpha1"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
 
-
-type Master struct{
-	settings v1alpha1.ControlPlaneMaster
-	namespacedName types.NamespacedName
-	apiServer apiServer
-	scheduler Scheduler
+type Master struct {
+	settings          v1alpha1.ControlPlaneMaster
+	namespacedName    types.NamespacedName
+	apiServer         apiServer
+	scheduler         Scheduler
 	controllerManager ControllerManager
-	resourceManager ResourcesManager
+	resourceManager   ResourcesManager
 }
 
 func NewMaster(namespacedName types.NamespacedName, settings v1alpha1.ControlPlaneMaster, loadBalancerHostnames []string,
-	resourcesManager ResourcesManager)(*Master,error) {
+	resourcesManager ResourcesManager) (*Master, error) {
 
 	advertiseAddress := strings.Join(loadBalancerHostnames, ",")
 
-	otherComponentsDivisorResourcesStrategy := func(res int)int{
-		return res/3
+	otherComponentsDivisorResourcesStrategy := func(res int) int {
+		return res / 3
 	}
-	otherComponentsResources,err := resourcesManager.split(settings.ResourceRequirements,otherComponentsDivisorResourcesStrategy)
+	otherComponentsResources, err := resourcesManager.split(settings.ResourceRequirements, otherComponentsDivisorResourcesStrategy)
 
 	if err != nil {
 		return nil, err
 	}
 
-	apiServerDivisorResourcesStrategy := func(res int)int{
+	apiServerDivisorResourcesStrategy := func(res int) int {
 		return otherComponentsDivisorResourcesStrategy(res) + res%3
 	}
-	apiServerResources,err := resourcesManager.split(settings.ResourceRequirements,apiServerDivisorResourcesStrategy)
+	apiServerResources, err := resourcesManager.split(settings.ResourceRequirements, apiServerDivisorResourcesStrategy)
 
 	if err != nil {
 		return nil, err
 	}
 
 	return &Master{
-		settings: settings,
-		namespacedName: namespacedName,
+		settings:        settings,
+		namespacedName:  namespacedName,
 		resourceManager: resourcesManager,
 		apiServer: newAPIServer(
 			advertiseAddress,
@@ -56,12 +56,12 @@ func NewMaster(namespacedName types.NamespacedName, settings v1alpha1.ControlPla
 		),
 		scheduler: NewScheduler(*otherComponentsResources),
 		controllerManager: NewControllerManager(
-			namespacedName.Name, settings.ServiceClusterIPRange,settings.ClusterCIDR, *otherComponentsResources,
+			namespacedName.Name, settings.ServiceClusterIPRange, settings.ClusterCIDR, *otherComponentsResources,
 		),
 	}, nil
 }
 
-func (master *Master) EqualDeployment(deployment *appsv1.Deployment)(bool,error){
+func (master *Master) EqualDeployment(deployment *appsv1.Deployment) (bool, error) {
 	currentDeployment := master.BuildDeployment()
 
 	if *deployment.Spec.Replicas != *currentDeployment.Spec.Replicas {
@@ -86,7 +86,7 @@ func (master *Master) EqualDeployment(deployment *appsv1.Deployment)(bool,error)
 
 	for _, container := range deployment.Spec.Template.Spec.Containers {
 		currentContainer := master.findContainer(container.Name)
-		if currentContainer == nil || !reflect.DeepEqual(currentContainer.Command, container.Command){
+		if currentContainer == nil || !reflect.DeepEqual(currentContainer.Command, container.Command) {
 			return false, nil
 		}
 	}
@@ -94,14 +94,14 @@ func (master *Master) EqualDeployment(deployment *appsv1.Deployment)(bool,error)
 	return true, nil
 }
 
-func (master *Master) BuildDeployment()*appsv1.Deployment{
+func (master *Master) BuildDeployment() *appsv1.Deployment {
 	replicas := int32(master.settings.Count)
 
 	return &appsv1.Deployment{
 		ObjectMeta: v1.ObjectMeta{
 			Namespace: master.namespacedName.Namespace,
-			Name: master.namespacedName.Name,
-			Labels: master.buildPodLabels(),
+			Name:      master.namespacedName.Name,
+			Labels:    master.buildPodLabels(),
 		},
 		Spec: appsv1.DeploymentSpec{
 			Replicas: &replicas,
@@ -113,12 +113,12 @@ func (master *Master) BuildDeployment()*appsv1.Deployment{
 	}
 }
 
-func (master *Master) buildPod()corev1.PodTemplateSpec{
+func (master *Master) buildPod() corev1.PodTemplateSpec {
 
 	return corev1.PodTemplateSpec{
 		ObjectMeta: v1.ObjectMeta{
 			Namespace: master.namespacedName.Namespace,
-			Labels: master.buildPodLabels(),
+			Labels:    master.buildPodLabels(),
 		},
 		Spec: corev1.PodSpec{
 			Volumes: master.buildVolumes(),
@@ -131,7 +131,7 @@ func (master *Master) buildPod()corev1.PodTemplateSpec{
 	}
 }
 
-func (master *Master) buildVolumes()[]corev1.Volume{
+func (master *Master) buildVolumes() []corev1.Volume {
 
 	return []corev1.Volume{
 		master.buildSecretVolume("ca", "ca-certs"),
@@ -140,7 +140,7 @@ func (master *Master) buildVolumes()[]corev1.Volume{
 	}
 }
 
-func (*Master) buildSecretVolume(volumeName, secretName string)corev1.Volume{
+func (*Master) buildSecretVolume(volumeName, secretName string) corev1.Volume {
 	return corev1.Volume{
 		Name: volumeName,
 		VolumeSource: corev1.VolumeSource{
@@ -151,20 +151,20 @@ func (*Master) buildSecretVolume(volumeName, secretName string)corev1.Volume{
 	}
 }
 
-func (master *Master) findContainer(containerName string)*corev1.Container{
+func (master *Master) findContainer(containerName string) *corev1.Container {
 	deployment := master.BuildDeployment()
 	for _, container := range deployment.Spec.Template.Spec.Containers {
-		if container.Name == containerName{
+		if container.Name == containerName {
 			return &container
 		}
 	}
 	return nil
 }
 
-func (master *Master) buildPodLabels()map[string]string{
+func (master *Master) buildPodLabels() map[string]string {
 	return map[string]string{
-		"app":"master",
+		"app":     "master",
 		"cluster": master.namespacedName.Name,
-		"tier": "control-plane",
+		"tier":    "control-plane",
 	}
 }

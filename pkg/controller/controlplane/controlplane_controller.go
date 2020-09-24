@@ -2,6 +2,7 @@ package controlplane
 
 import (
 	"context"
+
 	"github.com/globocom/caks/pkg/model/master"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -52,9 +53,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 
 	// TODO(user): Modify this to be the types you create that are owned by the primary resource
 	// Watch for changes to secondary resource Deployment and requeue the owner ControlPlane
-	err = c.Watch(&source.Kind{Type: &appsv1.Deployment{}}, &handler.EnqueueRequestForObject{
-
-	}, predicate.GenerationChangedPredicate{Funcs: predicate.Funcs{DeleteFunc: func(e event.DeleteEvent) bool{
+	err = c.Watch(&source.Kind{Type: &appsv1.Deployment{}}, &handler.EnqueueRequestForObject{}, predicate.GenerationChangedPredicate{Funcs: predicate.Funcs{DeleteFunc: func(e event.DeleteEvent) bool {
 		if _, ok := e.Meta.GetLabels()["tier"]; ok {
 			return true
 		}
@@ -93,7 +92,7 @@ func (r *ReconcileControlPlane) Reconcile(request reconcile.Request) (reconcile.
 	err := r.client.Get(context.TODO(), request.NamespacedName, instance)
 
 	if err != nil {
-		if errors.IsNotFound(err){
+		if errors.IsNotFound(err) {
 			return reconcile.Result{}, nil
 		}
 		return reconcile.Result{}, err
@@ -126,10 +125,10 @@ func (r *ReconcileControlPlane) Reconcile(request reconcile.Request) (reconcile.
 	return reconcile.Result{}, nil
 }
 
-func (r *ReconcileControlPlane) extractLoadBalancerHostNames(loadBalancer *corev1.Service)[]string{
+func (r *ReconcileControlPlane) extractLoadBalancerHostNames(loadBalancer *corev1.Service) []string {
 	ips := make([]string, len(loadBalancer.Status.LoadBalancer.Ingress))
 
-	for index,ingress := range loadBalancer.Status.LoadBalancer.Ingress{
+	for index, ingress := range loadBalancer.Status.LoadBalancer.Ingress {
 		ips[index] = ingress.IP
 	}
 
@@ -141,14 +140,14 @@ func (r *ReconcileControlPlane) extractLoadBalancerHostNames(loadBalancer *corev
 }
 
 func (r *ReconcileControlPlane) ensureLatestDeployment(instance *caksv1alpha1.ControlPlane,
-	loadBalancerHostnames []string, clusterNamespacedName types.NamespacedName)error {
+	loadBalancerHostnames []string, clusterNamespacedName types.NamespacedName) error {
 
 	masterDeployment := &appsv1.Deployment{}
 
 	err := r.client.Get(context.TODO(), clusterNamespacedName, masterDeployment)
 
 	if err != nil {
-		if errors.IsNotFound(err){
+		if errors.IsNotFound(err) {
 			return r.createMaster(clusterNamespacedName, instance, loadBalancerHostnames)
 		}
 		return err
@@ -167,7 +166,7 @@ func (r *ReconcileControlPlane) ensureLatestDeployment(instance *caksv1alpha1.Co
 		return err
 	}
 
-	if !equal{
+	if !equal {
 		if err = r.client.Update(context.TODO(), desiredMasterModel.BuildDeployment()); err != nil {
 			return err
 		}
@@ -177,15 +176,15 @@ func (r *ReconcileControlPlane) ensureLatestDeployment(instance *caksv1alpha1.Co
 }
 
 func (r *ReconcileControlPlane) ensureLatestLoadBalancer(instance *caksv1alpha1.ControlPlane,
-	clusterNamespacedName types.NamespacedName)(*corev1.Service, error){
+	clusterNamespacedName types.NamespacedName) (*corev1.Service, error) {
 
 	serviceLoadBalancer := &corev1.Service{}
 
 	err := r.client.Get(context.TODO(), clusterNamespacedName, serviceLoadBalancer)
 
 	if err != nil {
-		if errors.IsNotFound(err){
-			serviceLoadBalancer, err = r.createLoadBalancer(instance,clusterNamespacedName)
+		if errors.IsNotFound(err) {
+			serviceLoadBalancer, err = r.createLoadBalancer(instance, clusterNamespacedName)
 			if err != nil {
 				return nil, err
 			}
@@ -198,31 +197,31 @@ func (r *ReconcileControlPlane) ensureLatestLoadBalancer(instance *caksv1alpha1.
 }
 
 func (r *ReconcileControlPlane) ensureFinalizer(instance *caksv1alpha1.ControlPlane,
-	clusterNamespacedName types.NamespacedName)(bool,error){
+	clusterNamespacedName types.NamespacedName) (bool, error) {
 
 	controlPlaneFinalizerName := "controlplane.finalizers.gks.globo.com"
 
 	if instance.GetDeletionTimestamp().IsZero() {
-		if !slice.ContainsString(instance.GetFinalizers(), controlPlaneFinalizerName, nil){
-			instance.SetFinalizers(append(instance.GetFinalizers(),controlPlaneFinalizerName))
+		if !slice.ContainsString(instance.GetFinalizers(), controlPlaneFinalizerName, nil) {
+			instance.SetFinalizers(append(instance.GetFinalizers(), controlPlaneFinalizerName))
 			if err := r.client.Update(context.TODO(), instance); err != nil {
 				return false, err
 			}
 		}
-	}else{
-		if slice.ContainsString(instance.GetFinalizers(), controlPlaneFinalizerName, nil){
+	} else {
+		if slice.ContainsString(instance.GetFinalizers(), controlPlaneFinalizerName, nil) {
 			masterDeployment := &appsv1.Deployment{}
 			if err := r.client.Get(context.TODO(), clusterNamespacedName, masterDeployment); err == nil {
 				if err := r.client.Delete(context.TODO(), masterDeployment); err != nil {
 					return true, err
 				}
-			}else{
-				if !errors.IsNotFound(err){
+			} else {
+				if !errors.IsNotFound(err) {
 					return true, err
 				}
 			}
 
-			instance.SetFinalizers(slice.RemoveString(instance.GetFinalizers(),controlPlaneFinalizerName, nil))
+			instance.SetFinalizers(slice.RemoveString(instance.GetFinalizers(), controlPlaneFinalizerName, nil))
 			if err := r.client.Update(context.TODO(), instance); err != nil {
 				return true, err
 			}
@@ -234,22 +233,22 @@ func (r *ReconcileControlPlane) ensureFinalizer(instance *caksv1alpha1.ControlPl
 }
 
 func (r *ReconcileControlPlane) createLoadBalancer(instance *caksv1alpha1.ControlPlane,
-	namespacedName types.NamespacedName)(*corev1.Service, error){
+	namespacedName types.NamespacedName) (*corev1.Service, error) {
 
 	serviceLoadBalancer := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: namespacedName.Name,
+			Name:      namespacedName.Name,
 			Namespace: namespacedName.Namespace,
 			Labels: map[string]string{
-				"app":"load-balancer",
+				"app":     "load-balancer",
 				"cluster": namespacedName.Name,
-				"tier": "control-plane",
+				"tier":    "control-plane",
 			},
 		},
 		Spec: corev1.ServiceSpec{
 			Type: corev1.ServiceType("LoadBalancer"),
 			Ports: []corev1.ServicePort{
-				{ Port: 6443, TargetPort: intstr.FromInt(6443)},
+				{Port: 6443, TargetPort: intstr.FromInt(6443)},
 			},
 			Selector: map[string]string{
 				"cluster": namespacedName.Name,
@@ -269,7 +268,7 @@ func (r *ReconcileControlPlane) createLoadBalancer(instance *caksv1alpha1.Contro
 }
 
 func (r *ReconcileControlPlane) createMaster(namspacedName types.NamespacedName, instance *caksv1alpha1.ControlPlane,
-	loadBalancerHostnames []string)error{
+	loadBalancerHostnames []string) error {
 	masterModel, err := master.NewMaster(namspacedName, instance.Spec.ControlPlaneMaster, loadBalancerHostnames,
 		master.NewResourceSplitter())
 
@@ -289,6 +288,3 @@ func (r *ReconcileControlPlane) createMaster(namspacedName types.NamespacedName,
 
 	return nil
 }
-
-
-
