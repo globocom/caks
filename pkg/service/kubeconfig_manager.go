@@ -123,7 +123,7 @@ func (kcm *KubeConfigManager) generateClientKey() (*rsa.PrivateKey, error) {
 }
 
 func (kcm *KubeConfigManager) assignCertificate(certificate, ca x509.Certificate, privateKey *rsa.PrivateKey) ([]byte, error) {
-	return nil, nil
+	return x509.CreateCertificate(rand.Reader, &certificate, &ca, privateKey.PublicKey, privateKey)
 }
 
 func (kcm *KubeConfigManager) generateBase64Pem(certificateByte []byte) string {
