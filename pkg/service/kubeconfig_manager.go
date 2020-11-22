@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"crypto/rsa"
 	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/pem"
+	"math/big"
 	"text/template"
 )
 
@@ -43,7 +45,7 @@ func (kcm *KubeConfigManager) GenerateKubeConfig(certificateAuthorityBytes []byt
 		return nil, err
 	}
 
-	clusterCertificate := kcm.createCertificate(clusterName)
+	clusterCertificate := kcm.createCertificate(*ca, clusterName)
 
 	privateKey, err := kcm.generateClientKey()
 
@@ -101,8 +103,18 @@ func (kcm *KubeConfigManager) readCertificate(certificateBytes []byte) (*x509.Ce
 	return x509.ParseCertificate(block.Bytes)
 }
 
-func (kcm *KubeConfigManager) createCertificate(clusterName string) x509.Certificate {
-	return x509.Certificate{}
+func (kcm *KubeConfigManager) createCertificate(ca x509.Certificate, clusterName string) x509.Certificate {
+	return x509.Certificate{
+		SerialNumber: big.NewInt(2020),
+		Subject: pkix.Name{
+			Organization:  []string{clusterName},
+			Country:       ca.Subject.Country,
+			Province:      ca.Subject.Province,
+			Locality:      ca.Subject.Locality,
+			StreetAddress: ca.Subject.StreetAddress,
+			PostalCode:    ca.Subject.PostalCode,
+		},
+	}
 }
 
 func (kcm *KubeConfigManager) generateClientKey() (*rsa.PrivateKey, error) {
