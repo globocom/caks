@@ -2,6 +2,7 @@ package service
 
 import (
 	"bytes"
+	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
@@ -118,7 +119,7 @@ func (kcm *KubeConfigManager) createCertificate(ca x509.Certificate, clusterName
 }
 
 func (kcm *KubeConfigManager) generateClientKey() (*rsa.PrivateKey, error) {
-	return nil, nil
+	return rsa.GenerateKey(rand.Reader, 4096)
 }
 
 func (kcm *KubeConfigManager) assignCertificate(certificate, ca x509.Certificate, privateKey *rsa.PrivateKey) ([]byte, error) {
