@@ -60,9 +60,9 @@ func (kcm *KubeConfigManager) GenerateKubeConfig(certificateAuthorityBytes []byt
 		return nil, err
 	}
 
-	certificatePem := kcm.generateBase64Pem(signedCertificate)
-	clientKeyPem := kcm.generateBase64Pem(x509.MarshalPKCS1PrivateKey(privateKey))
-	caPem := kcm.generateBase64Pem(certificateAuthorityBytes)
+	certificatePem := kcm.generateBase64Pem("CERTIFICATE", signedCertificate)
+	clientKeyPem := kcm.generateBase64Pem("RSA PRIVATE KEY", x509.MarshalPKCS1PrivateKey(privateKey))
+	caPem := kcm.generateBase64Pem("CERTIFICATE", certificateAuthorityBytes)
 
 	template, err := template.New("kubeconfig").Parse(kubeConfigTemplate)
 
@@ -126,6 +126,14 @@ func (kcm *KubeConfigManager) assignCertificate(certificate, ca x509.Certificate
 	return x509.CreateCertificate(rand.Reader, &certificate, &ca, privateKey.PublicKey, privateKey)
 }
 
-func (kcm *KubeConfigManager) generateBase64Pem(certificateByte []byte) string {
-	return ""
+func (kcm *KubeConfigManager) generateBase64Pem(typ string, certificateByte []byte) string {
+
+	var buffer bytes.Buffer
+
+	pem.Encode(&buffer, &pem.Block{
+		Type:  typ,
+		Bytes: certificateByte,
+	})
+
+	return buffer.String()
 }
