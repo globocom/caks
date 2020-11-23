@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/rsa"
 	"crypto/x509"
+	"encoding/pem"
 	"text/template"
 )
 
@@ -96,7 +97,8 @@ func (kcm *KubeConfigManager) GenerateKubeConfig(certificateAuthorityBytes []byt
 }
 
 func (kcm *KubeConfigManager) readCertificate(certificateBytes []byte) (*x509.Certificate, error) {
-	return nil, nil
+	block, _ := pem.Decode(certificateBytes)
+	return x509.ParseCertificate(block.Bytes)
 }
 
 func (kcm *KubeConfigManager) createCertificate(clusterName string) x509.Certificate {
