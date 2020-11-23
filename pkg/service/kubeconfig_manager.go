@@ -6,6 +6,7 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/base64"
 	"encoding/pem"
 	"math/big"
 	"text/template"
@@ -143,5 +144,5 @@ func (kcm *KubeConfigManager) generateBase64Pem(typ string, certificateByte []by
 		Bytes: certificateByte,
 	})
 
-	return buffer.String()
+	return base64.RawStdEncoding.EncodeToString(buffer.Bytes())
 }
