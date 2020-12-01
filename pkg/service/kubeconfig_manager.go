@@ -38,6 +38,7 @@ users:
 type KubeConfigManager struct {
 }
 
+//GenerateKubeConfig - generate kubernetes configuration
 func (kcm *KubeConfigManager) GenerateKubeConfig(certificateAuthorityBytes []byte, server,
 	clusterName, user string) (*string, error) {
 
