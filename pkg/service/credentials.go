@@ -10,17 +10,25 @@ import (
 	"math/big"
 )
 
-// Credentials - Credentials Service
-type Credentials struct{}
+// Credential - cluster credential
+type Credential struct {
+	certificateAuthority []byte
+	certificatePEM       []byte
+	clientKeyPEM         []byte
+	clusterName          string
+}
 
-//GenerateCertificate - Generate certificate
-func (c *Credentials) GenerateCertificate(certificateAuthorityBytes []byte,
-	clusterName string) ([]byte, []byte, error) {
+// CredentialsBuilder - Credentials Service
+type CredentialsBuilder struct{}
 
-	ca, err := c.readCertificate(certificateAuthorityBytes)
+//Build - Build credential
+func (c *CredentialsBuilder) Build(certificateAuthority []byte,
+	clusterName string) (*Credential, error) {
+
+	ca, err := c.readCertificate(certificateAuthority)
 
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	clusterCertificate := c.createCertificate(*ca, clusterName)
@@ -28,27 +36,32 @@ func (c *Credentials) GenerateCertificate(certificateAuthorityBytes []byte,
 	privateKey, err := c.generateClientKey()
 
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	signedCertificate, err := c.assignCertificate(clusterCertificate, *ca, privateKey)
 
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	certificatePem := c.generateCertificatePem(signedCertificate)
 	clientKeyPem := c.generatePrivateKeyPem(privateKey)
 
-	return certificatePem, clientKeyPem, nil
+	return &Credential{
+		clientKeyPEM:         clientKeyPem,
+		certificatePEM:       certificatePem,
+		certificateAuthority: certificateAuthority,
+		clusterName:          clusterName,
+	}, nil
 }
 
-func (c *Credentials) readCertificate(certificateBytes []byte) (*x509.Certificate, error) {
+func (c *CredentialsBuilder) readCertificate(certificateBytes []byte) (*x509.Certificate, error) {
 	block, _ := pem.Decode(certificateBytes)
 	return x509.ParseCertificate(block.Bytes)
 }
 
-func (c *Credentials) createCertificate(ca x509.Certificate, clusterName string) x509.Certificate {
+func (c *CredentialsBuilder) createCertificate(ca x509.Certificate, clusterName string) x509.Certificate {
 	return x509.Certificate{
 		SerialNumber: big.NewInt(2020),
 		Subject: pkix.Name{
@@ -62,23 +75,23 @@ func (c *Credentials) createCertificate(ca x509.Certificate, clusterName string)
 	}
 }
 
-func (c *Credentials) generateClientKey() (*rsa.PrivateKey, error) {
+func (c *CredentialsBuilder) generateClientKey() (*rsa.PrivateKey, error) {
 	return rsa.GenerateKey(rand.Reader, 4096)
 }
 
-func (c *Credentials) assignCertificate(certificate, ca x509.Certificate, privateKey *rsa.PrivateKey) ([]byte, error) {
+func (c *CredentialsBuilder) assignCertificate(certificate, ca x509.Certificate, privateKey *rsa.PrivateKey) ([]byte, error) {
 	return x509.CreateCertificate(rand.Reader, &certificate, &ca, &privateKey.PublicKey, privateKey)
 }
 
-func (c *Credentials) generateCertificatePem(certificateByte []byte) []byte {
+func (c *CredentialsBuilder) generateCertificatePem(certificateByte []byte) []byte {
 	return c.generatePem("CERTIFICATE", certificateByte)
 }
 
-func (c *Credentials) generatePrivateKeyPem(privateKey *rsa.PrivateKey) []byte {
+func (c *CredentialsBuilder) generatePrivateKeyPem(privateKey *rsa.PrivateKey) []byte {
 	return c.generatePem("RSA PRIVATE KEY", x509.MarshalPKCS1PrivateKey(privateKey))
 }
 
-func (c *Credentials) generatePem(typ string, certificateByte []byte) []byte {
+func (c *CredentialsBuilder) generatePem(typ string, certificateByte []byte) []byte {
 
 	var buffer bytes.Buffer
 
